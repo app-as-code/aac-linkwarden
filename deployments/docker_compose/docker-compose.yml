@@ -1,0 +1,114 @@
+services:
+  # --- Main Application Service ---
+  aac-linkwarden:
+    image: "ghcr.io/linkwarden/linkwarden:v2.16.3"
+    container_name: "aac-linkwarden"
+    hostname: "links"
+    restart: "always"
+
+
+    environment:
+      AUTOSCROLL_TIMEOUT: "30"
+      NEXT_PUBLIC_DISABLE_REGISTRATION: "false"
+      NEXT_PUBLIC_AUTHENTIK_ENABLED: "true"
+      PUID: "1000"
+      TZ: "Europe/Berlin"
+      NEXT_PUBLIC_CREDENTIALS_ENABLED: "true"
+      STORAGE_FOLDER: "/data"
+      RE_ARCHIVE_LIMIT: "5"
+      NEXTAUTH_URL: "https://links.example.com"
+      PAGINATION_TAKE_COUNT: "50"
+      AUTHENTIK_CLIENT_ID: "${AUTHENTIK_CLIENT_ID:?set AUTHENTIK_CLIENT_ID in .env (see .env.example)}"
+      PGID: "1000"
+      AUTHENTIK_CUSTOM_NAME: "Authentik"
+      AUTHENTIK_ISSUER: "https://links.example.com"
+      DISABLE_NEW_SSO_USERS: "false"
+      DATABASE_URL: "${DATABASE_URL:?set DATABASE_URL in .env (see .env.example)}"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET in .env (see .env.example)}"
+      AUTHENTIK_CLIENT_SECRET: "${AUTHENTIK_CLIENT_SECRET:?set AUTHENTIK_CLIENT_SECRET in .env (see .env.example)}"
+      HOMEPAGE_WIDGET_KEY: "${HOMEPAGE_WIDGET_KEY:?set HOMEPAGE_WIDGET_KEY in .env (see .env.example)}"
+      POSTGRES_USER: "linkwarden"
+      POSTGRES_DB: "linkwarden"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (see .env.example)}"
+    volumes:
+      - "/export/docker/aac-linkwarden/config:/config"
+
+    networks:
+      - interconnect
+      - secured
+      - stack_internal
+
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.aac-linkwarden.rule: "Host(`links.example.com`)"
+      traefik.http.routers.aac-linkwarden.entrypoints: "websecure"
+      traefik.http.routers.aac-linkwarden.tls: "true"
+      traefik.http.routers.aac-linkwarden.tls.certresolver: "ionos"
+      traefik.docker.network: "services-secured"
+      traefik.http.services.aac-linkwarden.loadbalancer.server.port: "3000"
+      traefik.http.services.aac-linkwarden.loadbalancer.server.scheme: "http"
+      auto-dns.createWildcard.aac-linkwarden: "false"
+      auto-dns.customDNS.aac-linkwarden: "true"
+      auto-dns.customDOMAIN.aac-linkwarden: "example.com"
+      auto-dns.customHost.aac-linkwarden: "links"
+      homepage.group: "Finanzen - Dokumente - Organisation"
+      homepage.name: "Lesezeichen"
+      homepage.href: "https://links.example.com"
+      homepage.icon: "linkwarden"
+      homepage.description: "Selbstgehostete Bookmark-Verwaltung"
+
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    depends_on:
+      aac-linkwarden-db:
+        condition: service_healthy
+
+
+  # --- Service Dependencies (Sidecars) ---
+  aac-linkwarden-db:
+    image: "postgres:18"
+    container_name: "aac-linkwarden-db"
+    restart: "always"
+    
+
+    env_file:
+      - .env
+    environment:
+      PUID: "1000"
+      TZ: "Europe/Berlin"
+      PGID: "1000"
+
+
+    volumes:
+      - "/export/docker/aac-linkwarden/db:/var/lib/postgresql"
+
+    networks:
+      - stack_internal
+
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-postgres}\" -d \"$${POSTGRES_DB:-postgres}\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+
+
+networks:
+  secured:
+    name: "services-secured"
+    external: true
+  exposed:
+    name: "services-exposed"
+    external: true
+  interconnect:
+    name: "docker-default"
+    external: true
+  stack_internal:
+    name: "aac-linkwarden_stack_internal"
+    driver: "bridge"
+

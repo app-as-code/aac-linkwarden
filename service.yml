@@ -1,0 +1,130 @@
+service:
+  name: aac-linkwarden
+  friendly_name: Lesezeichen
+  image_repo: ghcr.io/linkwarden/linkwarden
+  image_tag: v2.16.3
+  description: Selbstgehostete Bookmark-Verwaltung
+  icon: linkwarden
+  category: Finanzen - Dokumente - Organisation
+  stage: prod
+  hostname: links
+ports:
+- name: web
+  port: 3000
+  protocol: TCP
+config:
+  domain_name: example.com
+  routing_port: 3000
+  integrations:
+    homepage:
+      enabled: true
+    autodns:
+      enabled: true
+    traefik:
+      enabled: true
+      cert_resolver: ionos
+      entrypoint: websecure
+  schema_version: 2
+stage_overrides:
+  prod:
+    service:
+      hostname: links
+    config:
+      generate_hostname: false
+secrets:
+  DATABASE_URL: CHANGE_ME
+  NEXTAUTH_SECRET: CHANGE_ME
+  AUTHENTIK_CLIENT_SECRET: CHANGE_ME
+  HOMEPAGE_WIDGET_KEY: CHANGE_ME
+  POSTGRES_USER: linkwarden
+  POSTGRES_DB: linkwarden
+  POSTGRES_PASSWORD: CHANGE_ME
+volumes:
+  config:
+    description: Linkwarden application configuration
+  db_data:
+    description: Data for database
+deployment_strategy:
+  main:
+    enabled: true
+    target_stage: prod
+  dev:
+    enabled: true
+    target_stage: dev
+  test:
+    enabled: false
+    target_stage: test
+  ansible-dev:
+    enabled: true
+    target_stage: dev
+  iac-dev:
+    enabled: true
+    target_stage: dev
+  template-dev:
+    enabled: true
+    target_stage: dev
+deployments:
+  docker_compose:
+    restart_policy: always
+    host_base_path: /export/docker
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    volumes:
+    - config:/config
+    environment:
+      AUTOSCROLL_TIMEOUT: '{{ vars.AUTOSCROLL_TIMEOUT }}'
+      NEXT_PUBLIC_DISABLE_REGISTRATION: '{{ vars.NEXT_PUBLIC_DISABLE_REGISTRATION
+        }}'
+      NEXT_PUBLIC_AUTHENTIK_ENABLED: '{{ vars.NEXT_PUBLIC_AUTHENTIK_ENABLED }}'
+      PUID: '{{ vars.PUID }}'
+      TZ: '{{ vars.TZ }}'
+      NEXT_PUBLIC_CREDENTIALS_ENABLED: '{{ vars.NEXT_PUBLIC_CREDENTIALS_ENABLED }}'
+      STORAGE_FOLDER: '{{ vars.STORAGE_FOLDER }}'
+      RE_ARCHIVE_LIMIT: '{{ vars.RE_ARCHIVE_LIMIT }}'
+      NEXTAUTH_URL: '{{ vars.NEXTAUTH_URL }}'
+      PAGINATION_TAKE_COUNT: '{{ vars.PAGINATION_TAKE_COUNT }}'
+      AUTHENTIK_CLIENT_ID: '{{ vars.AUTHENTIK_CLIENT_ID }}'
+      PGID: '{{ vars.PGID }}'
+      AUTHENTIK_CUSTOM_NAME: '{{ vars.AUTHENTIK_CUSTOM_NAME }}'
+      AUTHENTIK_ISSUER: '{{ vars.AUTHENTIK_ISSUER }}'
+      DISABLE_NEW_SSO_USERS: '{{ vars.DISABLE_NEW_SSO_USERS }}'
+      DATABASE_URL: '{{ secrets.DATABASE_URL }}'
+      NEXTAUTH_SECRET: '{{ secrets.NEXTAUTH_SECRET }}'
+      AUTHENTIK_CLIENT_SECRET: '{{ secrets.AUTHENTIK_CLIENT_SECRET }}'
+      HOMEPAGE_WIDGET_KEY: '{{ secrets.HOMEPAGE_WIDGET_KEY }}'
+      POSTGRES_USER: '{{ secrets.POSTGRES_USER }}'
+      POSTGRES_DB: '{{ secrets.POSTGRES_DB }}'
+      POSTGRES_PASSWORD: '{{ secrets.POSTGRES_PASSWORD }}'
+dependencies:
+  database:
+    import: catalog/postgres.yml
+    overrides:
+      name: aac-linkwarden-db
+      image_tag: '18'
+      volumes:
+        db:
+          target: /var/lib/postgresql
+          description: Persistent storage for db
+      environment:
+        PUID: '{{ vars.PUID }}'
+        TZ: '{{ vars.TZ }}'
+        PGID: '{{ vars.PGID }}'
+vars:
+  AUTOSCROLL_TIMEOUT: '30'
+  NEXT_PUBLIC_DISABLE_REGISTRATION: 'false'
+  NEXT_PUBLIC_AUTHENTIK_ENABLED: 'true'
+  PUID: '1000'
+  TZ: Europe/Berlin
+  NEXT_PUBLIC_CREDENTIALS_ENABLED: 'true'
+  STORAGE_FOLDER: /data
+  RE_ARCHIVE_LIMIT: '5'
+  NEXTAUTH_URL: https://links.example.com
+  PAGINATION_TAKE_COUNT: '50'
+  AUTHENTIK_CLIENT_ID: CHANGE_ME
+  PGID: '1000'
+  AUTHENTIK_CUSTOM_NAME: Authentik
+  AUTHENTIK_ISSUER: https://links.example.com
+  DISABLE_NEW_SSO_USERS: 'false'
